@@ -1,0 +1,662 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>วิธีใช้บอทเช็คพื้นที่ AIS Fibre</title>
+<meta name="description" content="คู่มือใช้งานบอทเช็คพื้นที่ AIS Fibre บน Discord — คำสั่ง /condo และ /fibre พร้อมตัวอย่างจริง">
+<style>
+/* ── tokens ─────────────────────────────────────────────── */
+:root{
+  --ground:#ffffff;
+  --surface:#f2f5f4;
+  --surface-2:#e7edeb;
+  --line:#d6dfdc;
+  --line-soft:#e8eeec;
+  --ink:#12171a;
+  --ink-2:#45535b;
+  --ink-3:#6d7c84;
+  --accent:#0b6e63;
+  --accent-ink:#07544b;
+  --accent-soft:#e2f0ed;
+  --on-accent:#ffffff;
+  --fiber:#1f8a4c;
+  --copper:#b06a14;
+  --none:#b33a2e;
+  --near:#0e7c8c;
+  --shadow:0 1px 2px rgba(18,23,26,.05), 0 8px 24px -12px rgba(18,23,26,.18);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#0e1316;
+    --surface:#151c20;
+    --surface-2:#1d262b;
+    --line:#2a363c;
+    --line-soft:#1f2a2f;
+    --ink:#e8eeec;
+    --ink-2:#a3b2b8;
+    --ink-3:#7d8d94;
+    --accent:#4fcfbd;
+    --accent-ink:#7fe0d2;
+    --accent-soft:#12302c;
+    --on-accent:#06201d;
+    --fiber:#4cc87c;
+    --copper:#e0a048;
+    --none:#e4796c;
+    --near:#49c3d6;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.6);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0e1316;
+  --surface:#151c20;
+  --surface-2:#1d262b;
+  --line:#2a363c;
+  --line-soft:#1f2a2f;
+  --ink:#e8eeec;
+  --ink-2:#a3b2b8;
+  --ink-3:#7d8d94;
+  --accent:#4fcfbd;
+  --accent-ink:#7fe0d2;
+  --accent-soft:#12302c;
+  --on-accent:#06201d;
+  --fiber:#4cc87c;
+  --copper:#e0a048;
+  --none:#e4796c;
+  --near:#49c3d6;
+  --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.6);
+}
+
+/* ── base ───────────────────────────────────────────────── */
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;
+  background:var(--ground);
+  color:var(--ink);
+  font-family:"Noto Sans Thai","IBM Plex Sans Thai","Sarabun","Leelawadee UI","Thonburi",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+  font-size:17px;
+  line-height:1.75;
+  -webkit-font-smoothing:antialiased;
+}
+.mono{font-family:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace}
+
+.wrap{max-width:1140px;margin:0 auto;padding:0 20px}
+.cols{display:grid;grid-template-columns:1fr;gap:0}
+@media(min-width:1040px){
+  .cols{grid-template-columns:200px minmax(0,1fr);gap:56px;align-items:start}
+}
+main{max-width:70ch;min-width:0;padding-bottom:88px}
+
+h1,h2,h3{text-wrap:balance;line-height:1.3;margin:0}
+h1{font-size:clamp(1.9rem,4.6vw,2.7rem);font-weight:700;letter-spacing:-.022em}
+h2{font-size:clamp(1.3rem,2.7vw,1.6rem);font-weight:700;letter-spacing:-.015em}
+h3{font-size:1.06rem;font-weight:700;letter-spacing:-.008em}
+p{margin:0}
+a{color:var(--accent-ink);text-underline-offset:3px}
+a:focus-visible,button:focus-visible,summary:focus-visible{
+  outline:2px solid var(--accent);outline-offset:3px;border-radius:4px;
+}
+code{
+  font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  font-size:.88em;background:var(--surface-2);
+  padding:.12em .42em;border-radius:5px;
+}
+
+.label{
+  font-size:.7rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--ink-3);
+}
+
+/* fiber-strand divider: a hairline carrying a point of light */
+.strand{
+  height:1px;background:var(--line);margin:0;border:0;position:relative;
+}
+.strand::after{
+  content:"";position:absolute;top:-2px;left:0;width:5px;height:5px;
+  border-radius:50%;background:var(--accent);
+  box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+/* ── header ─────────────────────────────────────────────── */
+header.hero{padding:clamp(44px,8vw,84px) 0 0}
+.hero-kick{display:flex;align-items:center;gap:10px;margin-bottom:18px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--fiber);flex:none}
+.hero p.lede{
+  margin-top:18px;font-size:clamp(1.02rem,2vw,1.15rem);color:var(--ink-2);max-width:56ch;
+}
+.cta-row{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-top:28px}
+.btn{
+  display:inline-flex;align-items:center;gap:9px;
+  background:var(--accent);color:var(--on-accent);text-decoration:none;
+  font-weight:700;font-size:.97rem;
+  padding:11px 20px;border-radius:9px;
+  box-shadow:var(--shadow);
+  transition:transform .15s ease, filter .15s ease;
+}
+.btn:hover{filter:brightness(1.07);transform:translateY(-1px)}
+.chip{
+  display:inline-flex;align-items:center;gap:7px;
+  font-size:.88rem;color:var(--ink-2);
+  background:var(--surface);border:1px solid var(--line);
+  padding:8px 13px;border-radius:9px;
+}
+
+/* ── toc ────────────────────────────────────────────────── */
+nav.toc{display:none}
+@media(min-width:1040px){
+  nav.toc{
+    display:block;position:sticky;top:40px;
+    padding-top:calc(clamp(44px,8vw,84px) + 4px);
+  }
+  nav.toc ol{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:9px}
+  nav.toc a{
+    color:var(--ink-2);text-decoration:none;font-size:.9rem;
+    display:block;padding-left:13px;border-left:2px solid var(--line);
+  }
+  nav.toc a:hover{color:var(--accent-ink);border-left-color:var(--accent)}
+}
+
+/* ── sections ───────────────────────────────────────────── */
+section{padding-top:52px}
+section > .label{display:block;margin-bottom:9px}
+section > h2 + p{margin-top:12px;color:var(--ink-2)}
+
+/* pick-a-command cards */
+.picker{display:grid;gap:14px;margin-top:26px}
+@media(min-width:620px){.picker{grid-template-columns:1fr 1fr}}
+.pick{
+  background:var(--surface);border:1px solid var(--line);
+  border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:9px;
+}
+.pick .cmd{
+  font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  font-size:1.18rem;font-weight:700;color:var(--accent-ink);
+}
+.pick p{font-size:.95rem;color:var(--ink-2)}
+
+/* steps */
+ol.steps{margin:26px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:18px;counter-reset:s}
+ol.steps li{
+  counter-increment:s;position:relative;padding-left:44px;
+}
+ol.steps li::before{
+  content:counter(s);position:absolute;left:0;top:1px;
+  width:28px;height:28px;border-radius:50%;
+  background:var(--accent-soft);color:var(--accent-ink);
+  font-size:.86rem;font-weight:700;
+  display:flex;align-items:center;justify-content:center;
+  font-variant-numeric:tabular-nums;
+}
+ol.steps strong{font-weight:700}
+ol.steps .sub{display:block;font-size:.93rem;color:var(--ink-2);margin-top:3px}
+
+/* tip / warn callouts */
+.note{
+  margin-top:22px;padding:15px 18px;border-radius:10px;
+  background:var(--accent-soft);border:1px solid color-mix(in srgb,var(--accent) 24%,transparent);
+  font-size:.95rem;color:var(--ink);
+}
+.note.warn{
+  background:color-mix(in srgb,var(--copper) 11%,var(--ground));
+  border-color:color-mix(in srgb,var(--copper) 34%,transparent);
+}
+.note b{color:var(--accent-ink)}
+.note.warn b{color:var(--copper)}
+
+/* ── discord replica ────────────────────────────────────── */
+/* fixed dark palette on purpose: this is a picture of Discord */
+.dc{
+  --dc-bg:#313338; --dc-embed:#2b2d31; --dc-text:#dbdee1; --dc-dim:#949ba4;
+  --dc-field:#f2f3f5; --dc-input:#1e1f22;
+  background:var(--dc-bg);border-radius:12px;padding:16px;
+  margin-top:20px;color:var(--dc-text);
+  font-size:.92rem;line-height:1.55;box-shadow:var(--shadow);
+  overflow-x:auto;
+}
+.dc-cap{
+  font-size:.78rem;color:var(--ink-3);margin-top:10px;
+  display:flex;align-items:center;gap:7px;
+}
+.dc-cap::before{content:"";width:14px;height:1px;background:var(--line);flex:none}
+.dc-row{display:flex;gap:11px;align-items:flex-start;min-width:380px}
+.dc-av{width:32px;height:32px;border-radius:50%;background:#5865f2;flex:none}
+.dc-av.bot{background:var(--accent)}
+.dc-name{color:var(--dc-field);font-weight:600;font-size:.9rem}
+.dc-tag{
+  background:#5865f2;color:#fff;font-size:.62rem;font-weight:700;
+  padding:1px 5px;border-radius:4px;margin-left:6px;vertical-align:1.5px;
+  letter-spacing:.02em;
+}
+.dc-slash{color:#c9cdfb}
+.dc-embed{
+  background:var(--dc-embed);border-radius:5px;
+  border-left:4px solid var(--eb,#2f9e5b);
+  padding:13px 16px 15px;margin-top:8px;max-width:460px;
+}
+.dc-title{color:var(--dc-field);font-weight:700;font-size:.96rem;line-height:1.4}
+.dc-desc{margin-top:7px;color:var(--dc-text)}
+.dc-f{margin-top:11px}
+.dc-f-name{color:var(--dc-field);font-weight:700;font-size:.82rem}
+.dc-f-val{color:var(--dc-text);font-size:.9rem;margin-top:2px}
+.dc-grid{display:flex;gap:28px;flex-wrap:wrap}
+.dc-foot{
+  margin-top:13px;padding-top:9px;border-top:1px solid #3f4248;
+  color:var(--dc-dim);font-size:.75rem;line-height:1.5;
+}
+.dc-list{
+  font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  font-size:.8rem;line-height:1.75;white-space:pre;
+}
+.dc-link{color:#00a8fc;text-decoration:none}
+.dc-sel{
+  margin-top:9px;max-width:460px;background:var(--dc-input);
+  border:1px solid #42454a;border-radius:4px;
+  padding:9px 13px;color:var(--dc-dim);font-size:.88rem;
+  display:flex;justify-content:space-between;align-items:center;
+}
+/* autocomplete popover */
+.dc-ac{background:var(--dc-input);border-radius:6px;padding:7px;max-width:470px}
+.dc-ac-h{color:var(--dc-dim);font-size:.72rem;padding:5px 9px 8px;letter-spacing:.03em}
+.dc-ac-i{padding:7px 10px;border-radius:4px;color:var(--dc-text);font-size:.87rem}
+.dc-ac-i.on{background:#3f4248;color:#fff}
+.dc-typed{
+  background:var(--dc-input);border-radius:7px;padding:11px 14px;
+  color:var(--dc-text);display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;
+}
+.dc-pill{
+  background:#4752c4;color:#fff;padding:1px 7px;border-radius:4px;
+  font-size:.86rem;font-weight:600;
+}
+
+/* ── legend table ───────────────────────────────────────── */
+.tablewrap{overflow-x:auto;margin-top:22px}
+table{border-collapse:collapse;width:100%;min-width:460px;font-size:.94rem}
+th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line-soft);vertical-align:top}
+th{
+  font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--ink-3);font-weight:700;border-bottom:1px solid var(--line);
+}
+td:first-child{white-space:nowrap;font-weight:600}
+td:last-child{color:var(--ink-2)}
+.sw{
+  display:inline-block;width:9px;height:9px;border-radius:50%;
+  margin-right:8px;vertical-align:.5px;
+}
+
+/* ── faq ────────────────────────────────────────────────── */
+details{
+  border:1px solid var(--line);border-radius:10px;
+  padding:0 18px;background:var(--surface);margin-top:10px;
+}
+details[open]{background:var(--ground)}
+summary{
+  cursor:pointer;padding:14px 0;font-weight:700;font-size:.97rem;
+  list-style:none;display:flex;justify-content:space-between;gap:14px;align-items:center;
+}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";color:var(--accent);font-weight:400;font-size:1.3rem;line-height:1;flex:none}
+details[open] summary::after{content:"−"}
+details .body{padding:0 0 16px;color:var(--ink-2);font-size:.95rem}
+details .body ul{margin:8px 0 0;padding-left:20px}
+details .body li{margin-top:5px}
+
+/* ── pin block ──────────────────────────────────────────── */
+pre.pin{
+  margin-top:22px;background:var(--surface);border:1px solid var(--line);
+  border-radius:11px;padding:20px;overflow-x:auto;
+  font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  font-size:.84rem;line-height:1.85;color:var(--ink);
+}
+
+footer{
+  margin-top:64px;padding:26px 0 44px;border-top:1px solid var(--line);
+  color:var(--ink-3);font-size:.86rem;
+}
+footer p + p{margin-top:7px}
+
+@media (prefers-reduced-motion: reduce){
+  *{animation:none !important;transition:none !important}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="cols">
+
+<nav class="toc" aria-label="สารบัญ">
+  <span class="label">สารบัญ</span>
+  <ol>
+    <li><a href="#pick">เลือกคำสั่ง</a></li>
+    <li><a href="#condo">เช็คด้วยชื่อคอนโด</a></li>
+    <li><a href="#fibre">เช็คด้วยแผนที่</a></li>
+    <li><a href="#legend">อ่านผลลัพธ์</a></li>
+    <li><a href="#faq">ปัญหาที่เจอบ่อย</a></li>
+    <li><a href="#pin">ฉบับย่อ</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<header class="hero">
+  <div class="hero-kick">
+    <span class="dot"></span>
+    <span class="label">Discord · AIS PAKITA</span>
+  </div>
+  <h1>เช็คว่าติดตั้ง AIS Fibre ได้ไหม<br>ในสิบวินาที</h1>
+  <p class="lede">
+    พิมพ์ชื่อคอนโด หรือวางลิงก์ Google Maps ลงในห้องแชต
+    แล้วบอทจะบอกทันทีว่าจุดนั้นมีสายไฟเบอร์ถึงหรือยัง
+    ไม่ต้องโทรถาม ไม่ต้องรอพนักงานตอบ
+  </p>
+  <div class="cta-row">
+    <a class="btn" href="https://discord.gg/33SYspb8Z">เข้ากลุ่มเพื่อเริ่มใช้งาน</a>
+    <span class="chip"><span class="dot" style="background:var(--accent)"></span> ใช้ได้ในห้อง <code>#finding-spt-bot</code></span>
+  </div>
+</header>
+
+<section id="pick">
+  <hr class="strand">
+  <span class="label" style="margin-top:34px">ขั้นแรก</span>
+  <h2>เลือกคำสั่งจากสิ่งที่คุณมีอยู่</h2>
+  <p>บอทมีสองคำสั่ง ต่างกันแค่ว่าคุณรู้ <em>ชื่อ</em> ที่นั่น หรือรู้แค่ <em>ตำแหน่ง</em></p>
+
+  <div class="picker">
+    <div class="pick">
+      <span class="cmd">/condo</span>
+      <h3>รู้ชื่ออาคาร</h3>
+      <p>คอนโด อพาร์ตเมนต์ หมู่บ้านจัดสรร หรืออาคารที่มีชื่อเรียก</p>
+    </div>
+    <div class="pick">
+      <span class="cmd">/fibre</span>
+      <h3>รู้แค่ตำแหน่ง</h3>
+      <p>บ้านเดี่ยว ทาวน์โฮม ตึกแถว หรือที่ไหนก็ตามที่ไม่มีชื่ออาคาร</p>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>ใช้ได้เฉพาะห้อง <code>#finding-spt-bot</code></b> — ถ้าพิมพ์ผิดห้อง บอทจะเตือนและบอกชื่อห้องที่ถูกให้
+    ข้อความเตือนนั้นเห็นคนเดียว ไม่ไปรบกวนคนอื่นในห้อง
+  </div>
+</section>
+
+<section id="condo">
+  <hr class="strand">
+  <span class="label" style="margin-top:34px">วิธีที่ 1</span>
+  <h2>เช็คด้วยชื่อคอนโด</h2>
+  <p>วิธีที่เร็วที่สุด เพราะบอทมีรายชื่ออาคารในระบบ AIS อยู่แล้วกว่า 13,600 แห่งทั่วประเทศ</p>
+
+  <ol class="steps">
+    <li><strong>พิมพ์ <code>/condo</code></strong> ในห้องแชต แล้วเลือกคำสั่งที่เด้งขึ้นมา</li>
+    <li><strong>พิมพ์ชื่อคอนโดลงในช่อง <code>name</code></strong><span class="sub">ไทยหรืออังกฤษก็ได้ ไม่ต้องพิมพ์ครบทุกคำ</span></li>
+    <li><strong>พอพิมพ์ครบ 2 ตัวอักษร รายชื่อจะเด้งขึ้นมาเอง</strong><span class="sub">กดเลือกจากรายการนี้แม่นที่สุด เพราะส่งรหัสอาคารไปตรง ๆ ไม่ต้องให้บอทเดา</span></li>
+    <li><strong>ถ้าไม่เลือกจากรายการ กด Enter ส่งชื่อที่พิมพ์เองก็ได้</strong><span class="sub">เจอหลายตึก บอทจะขึ้นเมนูให้เลือกทีหลัง</span></li>
+  </ol>
+
+  <div class="dc">
+    <div class="dc-row">
+      <div class="dc-av"></div>
+      <div style="min-width:0">
+        <div class="dc-name">คุณ</div>
+        <div class="dc-typed" style="margin-top:6px">
+          <span class="dc-pill">/condo</span>
+          <span style="color:#949ba4">name:</span>
+          <span>ศุภาลัย เวลลิงตัน</span>
+        </div>
+        <div class="dc-ac" style="margin-top:7px">
+          <div class="dc-ac-h">ศุภาลัย เวลลิงตัน</div>
+          <div class="dc-ac-i on">ศุภาลัย เวลลิงตัน ตึก 1 — ห้วยขวาง กรุงเทพ · ทองแดง</div>
+          <div class="dc-ac-i">ศุภาลัย เวลลิงตัน ตึก 2 — ห้วยขวาง กรุงเทพ · ทองแดง</div>
+          <div class="dc-ac-i">ศุภาลัย เวลลิงตัน 2 (ไฟเบอร์) ตึก 1 — ห้วยขวาง กรุงเทพ · ไฟเบอร์</div>
+          <div class="dc-ac-i">ศุภาลัย เวลลิงตัน 2 (ไฟเบอร์) ตึก 2 — ห้วยขวาง กรุงเทพ · ไฟเบอร์</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="dc-cap">รายการที่เด้งขึ้นบอกตั้งแต่ยังไม่กดว่าตึกไหนเป็นไฟเบอร์ ตึกไหนเป็นทองแดง</p>
+
+  <h3 style="margin-top:38px">ถ้าโครงการมีหลายตึก</h3>
+  <p style="color:var(--ink-2);margin-top:9px">บอทจะขึ้นรายการทั้งหมดพร้อมเมนูเลื่อนเลือกด้านล่าง กดเลือกตึกที่ต้องการ แล้วข้อความเดิมจะเปลี่ยนเป็นผลของตึกนั้นทันที</p>
+
+  <div class="dc">
+    <div class="dc-row">
+      <div class="dc-av bot"></div>
+      <div style="min-width:0">
+        <div class="dc-name">Fibre Bot<span class="dc-tag">APP</span></div>
+        <div class="dc-embed" style="--eb:#e67e22">
+          <div class="dc-title">🏢 เจอ 16 อาคาร — เลือกจากเมนูด้านล่าง</div>
+          <div class="dc-desc">คำค้น: <b>ศุภาลัย เวลลิงตัน</b></div>
+          <div class="dc-f">
+            <div class="dc-f-name">ตัวเลือก</div>
+            <div class="dc-f-val dc-list"> 1. 🟠 ศุภาลัย เวลลิงตัน ตึก 1 — ห้วยขวาง กรุงเทพ
+ 2. 🟠 ศุภาลัย เวลลิงตัน ตึก 2 — ห้วยขวาง กรุงเทพ
+ 3. 🟠 ศุภาลัย เวลลิงตัน ตึก 3 — ห้วยขวาง กรุงเทพ
+10. 🟢 ศุภาลัย เวลลิงตัน 2 (ไฟเบอร์) ตึก 1 — ห้วยขวาง กรุงเทพ
+11. 🟢 ศุภาลัย เวลลิงตัน 2 (ไฟเบอร์) ตึก 2 — ห้วยขวาง กรุงเทพ</div>
+          </div>
+          <div class="dc-foot">🟢 ไฟเบอร์ (FTTH) · 🟠 ทองแดง (xDSL)</div>
+        </div>
+        <div class="dc-sel"><span>เลือกอาคาร…</span><span>⌄</span></div>
+      </div>
+    </div>
+  </div>
+  <p class="dc-cap">ตัวอย่างจริงจากการค้น “ศุภาลัย เวลลิงตัน” — ย่อให้เห็นบางบรรทัด</p>
+
+  <h3 style="margin-top:38px">ผลลัพธ์ที่ได้</h3>
+
+  <div class="dc">
+    <div class="dc-row">
+      <div class="dc-av bot"></div>
+      <div style="min-width:0">
+        <div class="dc-name">Fibre Bot<span class="dc-tag">APP</span></div>
+        <div class="dc-embed" style="--eb:#2f9e5b">
+          <div class="dc-title">✅ ติดตั้งได้ — สายไฟเบอร์ (FTTH)</div>
+          <div class="dc-f">
+            <div class="dc-f-name">🏢 อาคาร</div>
+            <div class="dc-f-val"><b>ศุภาลัย เวลลิงตัน 2 (ไฟเบอร์) ตึก 1</b></div>
+          </div>
+          <div class="dc-f">
+            <div class="dc-f-name">📍 ที่ตั้ง</div>
+            <div class="dc-f-val">ห้วยขวาง ห้วยขวาง กรุงเทพ 10310<br><a class="dc-link" href="#">แผนที่</a></div>
+          </div>
+          <div class="dc-f">
+            <div class="dc-f-name">ประเภทสาย</div>
+            <div class="dc-f-val">🟢 ไฟเบอร์ (FTTH)</div>
+          </div>
+          <div class="dc-foot">MyChannel AIS · ควรยืนยันกับ AIS ก่อนนัดติดตั้ง</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>เคล็ดลับ</b> — ถ้ารู้ตึกอยู่แล้ว พิมพ์ชื่อเต็มไปเลย เช่น <code>ศุภาลัย เวลลิงตัน ตึก 3</code>
+    บอทจะตอบผลตึกนั้นทันที ข้ามขั้นตอนให้เลือก
+  </div>
+</section>
+
+<section id="fibre">
+  <hr class="strand">
+  <span class="label" style="margin-top:34px">วิธีที่ 2</span>
+  <h2>เช็คด้วยตำแหน่งบนแผนที่</h2>
+  <p>ใช้กับบ้านเดี่ยว ทาวน์โฮม ตึกแถว หรืออาคารที่ยังไม่มีชื่อในระบบ</p>
+
+  <ol class="steps">
+    <li><strong>พิมพ์ <code>/fibre</code></strong> แล้ววางข้อมูลลงในช่อง <code>query</code></li>
+    <li><strong>วางลิงก์ Google Maps หรือพิกัดก็ได้</strong><span class="sub">เช่น <code>https://maps.app.goo.gl/xxxxx</code> หรือ <code>13.8169,100.6031</code></span></li>
+  </ol>
+
+  <h3 style="margin-top:34px">วิธีเอาลิงก์จาก Google Maps</h3>
+  <ol class="steps" style="margin-top:16px">
+    <li><strong>บนมือถือ</strong><span class="sub">เปิดแอป Google Maps → <b>กดค้าง</b> ตรงจุดที่ต้องการจนมีหมุดแดงขึ้น → กด <b>แชร์</b> → <b>คัดลอกลิงก์</b></span></li>
+    <li><strong>บนคอมพิวเตอร์</strong><span class="sub"><b>คลิกขวา</b> ตรงจุดที่ต้องการ → คลิกที่ตัวเลขพิกัดบนสุดของเมนู ระบบจะคัดลอกให้เอง</span></li>
+  </ol>
+
+  <div class="note warn">
+    <b>ปักหมุดให้ตรงตัวบ้านที่สุด</b> — สายไฟเบอร์ต่างกันได้ในระยะไม่กี่สิบเมตร
+    ปักกลางถนนหรือหน้าปากซอยอาจได้คำตอบคนละอย่างกับตัวบ้านจริง
+  </div>
+
+  <div class="dc">
+    <div class="dc-row">
+      <div class="dc-av bot"></div>
+      <div style="min-width:0">
+        <div class="dc-name">Fibre Bot<span class="dc-tag">APP</span></div>
+        <div class="dc-embed" style="--eb:#2f9e5b">
+          <div class="dc-title">✅ มีสาย AIS Fibre (FTTH)</div>
+          <div class="dc-f">
+            <div class="dc-f-name">📍 ตำแหน่งที่ตรวจ</div>
+            <div class="dc-f-val">13.816900, 100.603100 · <a class="dc-link" href="#">แผนที่</a></div>
+          </div>
+          <div class="dc-grid">
+            <div class="dc-f">
+              <div class="dc-f-name">FTTH (สาย Fibre)</div>
+              <div class="dc-f-val">🟢 โชคชัย 4 ซอย 54 (FY76O)<br>
+                <span class="dc-list">ON_SERVICE · OLT SSW2M</span></div>
+            </div>
+            <div class="dc-f">
+              <div class="dc-f-name">WTTX (ไร้สาย)</div>
+              <div class="dc-f-val">ไม่พบ</div>
+            </div>
+          </div>
+          <div class="dc-foot">แผนที่ AIS Fibre · ผลเบื้องต้น ควรยืนยันก่อนนัดติดตั้ง</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="dc-cap">ตัวอย่างจริงจากพิกัด 13.8169,100.6031</p>
+</section>
+
+<section id="legend">
+  <hr class="strand">
+  <span class="label" style="margin-top:34px">อ่านผลลัพธ์</span>
+  <h2>คำตอบแต่ละแบบแปลว่าอะไร</h2>
+
+  <h3 style="margin-top:28px">จาก <code>/fibre</code></h3>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>สิ่งที่เห็น</th><th>แปลว่า</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="sw" style="background:var(--fiber)"></span>✅ มีสาย AIS Fibre</td>
+          <td>จุดนี้มีสายไฟเบอร์พร้อมใช้ — ดีที่สุด</td>
+        </tr>
+        <tr>
+          <td><span class="sw" style="background:var(--near)"></span>🟢 ใกล้พื้นที่ ~N ม.</td>
+          <td>ไม่มีสายตรงจุด แต่มีพื้นที่บริการห่างไม่เกิน 200 เมตร ระยะเท่านี้ AIS มักลากสายให้ได้ ควรลองสอบถาม</td>
+        </tr>
+        <tr>
+          <td><span class="sw" style="background:var(--copper)"></span>📶 มี WTTX</td>
+          <td>ไม่มีสาย แต่มีเน็ตบ้านแบบไร้สายผ่านเสาสัญญาณให้เลือกแทน</td>
+        </tr>
+        <tr>
+          <td><span class="sw" style="background:var(--copper)"></span>🟡 ยังไม่เปิดบริการ</td>
+          <td>วางสายไว้แล้วแต่ยังไม่เปิดขาย รอได้</td>
+        </tr>
+        <tr>
+          <td><span class="sw" style="background:var(--none)"></span>❌ ยังไม่อยู่ในพื้นที่</td>
+          <td>ยังไม่มีแผนในจุดนี้</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 style="margin-top:34px">จาก <code>/condo</code></h3>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>สิ่งที่เห็น</th><th>แปลว่า</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="sw" style="background:var(--fiber)"></span>✅ สายไฟเบอร์</td>
+          <td>อาคารนี้มีสายไฟเบอร์เข้าถึง ติดตั้งได้เต็มความเร็ว</td>
+        </tr>
+        <tr>
+          <td><span class="sw" style="background:var(--copper)"></span>✅ สายทองแดง</td>
+          <td><b>ติดตั้งได้เหมือนกัน</b> แต่เป็นสายทองแดงรุ่นเก่า ความเร็วสู้ไฟเบอร์ไม่ได้</td>
+        </tr>
+        <tr>
+          <td><span class="sw" style="background:var(--copper)"></span>🏢 เจอหลายอาคาร</td>
+          <td>ชื่อซ้ำกันหลายตึก เลือกจากเมนูด้านล่างข้อความ</td>
+        </tr>
+        <tr>
+          <td><span class="sw" style="background:var(--none)"></span>❌ ไม่พบชื่อนี้</td>
+          <td>ไม่มีในระบบ AIS — พิมพ์ชื่อสั้นลง หรือเปลี่ยนไปใช้ <code>/fibre</code></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note warn">
+    <b>เห็น ✅ อย่าเพิ่งดีใจจนลืมดูสี</b> — เครื่องหมายถูกแปลว่า “ติดตั้งได้” เฉย ๆ
+    ต้องดูต่อว่าเป็น <span style="color:var(--fiber);font-weight:700">🟢 ไฟเบอร์</span>
+    หรือ <span style="color:var(--copper);font-weight:700">🟠 ทองแดง</span> ซึ่งความเร็วต่างกันมาก
+  </div>
+</section>
+
+<section id="faq">
+  <hr class="strand">
+  <span class="label" style="margin-top:34px">แก้ปัญหา</span>
+  <h2>ปัญหาที่เจอบ่อย</h2>
+
+  <details>
+    <summary>ไม่เห็นคำสั่ง /condo หรือ /fibre</summary>
+    <div class="body">ปิดแล้วเปิด Discord ใหม่อีกครั้ง และเช็คว่ากำลังพิมพ์อยู่ในห้อง <code>#finding-spt-bot</code></div>
+  </details>
+
+  <details>
+    <summary>พิมพ์ชื่อคอนโดแล้วไม่มีรายการขึ้นมา</summary>
+    <div class="body">
+      ลองไล่ตามนี้
+      <ul>
+        <li>พิมพ์ให้ครบ 2 ตัวอักษรก่อน รายการถึงจะเริ่มขึ้น</li>
+        <li>พิมพ์ชื่อให้สั้นลง — <code>ศุภาลัย เวลลิงตัน</code> ดีกว่า <code>ศุภาลัย เวลลิงตัน คอนโดมิเนียม</code></li>
+        <li>ตัดคำว่า “คอนโด” หรือ “โครงการ” ออก</li>
+        <li>ลองพิมพ์ชื่ออังกฤษ บางโครงการขึ้นทะเบียนไว้เป็นอังกฤษอย่างเดียว</li>
+      </ul>
+    </div>
+  </details>
+
+  <details>
+    <summary>หาไม่เจอ แต่มั่นใจว่าคอนโดมีอยู่จริง</summary>
+    <div class="body">ใช้ <code>/fibre</code> แล้วปักหมุดที่ตัวอาคารแทน บางอาคารยังไม่ถูกขึ้นทะเบียนในระบบ AIS แต่พื้นที่รอบ ๆ มีสายแล้ว</div>
+  </details>
+
+  <details>
+    <summary>เจอหลายตึก ไม่รู้ว่าตึกไหนของเรา</summary>
+    <div class="body">ดูเลขตึกจากเอกสารห้องหรือถามนิติบุคคล บางโครงการตึกคนละตึกใช้สายคนละแบบจริง ๆ อย่างศุภาลัย เวลลิงตันที่ตึก 1–9 เป็นทองแดง แต่เฟส 2 เป็นไฟเบอร์</div>
+  </details>
+
+  <details>
+    <summary>ผลที่ได้เชื่อได้แค่ไหน</summary>
+    <div class="body">ถือเป็นข้อมูลเบื้องต้นเพื่อคัดกรองเท่านั้น <b>ควรยืนยันกับ AIS อีกครั้งก่อนนัดติดตั้ง</b> เพราะหน้างานจริงอาจต่างจากในระบบ และรายชื่ออาคารอัปเดตวันละครั้งตอนตีสาม อาคารที่เพิ่งเปิดใหม่มาก ๆ อาจยังไม่มี</div>
+  </details>
+</section>
+
+<section id="pin">
+  <hr class="strand">
+  <span class="label" style="margin-top:34px">ฉบับย่อ</span>
+  <h2>คัดลอกไปปักหมุดในห้อง</h2>
+  <p>สำหรับคนที่ไม่อยากอ่านยาว</p>
+
+<pre class="pin">🔍 เช็คพื้นที่ AIS Fibre
+
+มีชื่อคอนโด/อาคาร  →  /condo  แล้วพิมพ์ชื่อ (พิมพ์ 2 ตัวอักษรจะมีรายการให้เลือก)
+มีแต่ตำแหน่งบ้าน    →  /fibre  แล้ววางลิงก์ Google Maps หรือพิกัด
+
+อ่านผล:  ✅ ติดตั้งได้   🟢 ไฟเบอร์   🟠 ทองแดง (ช้ากว่า)
+         🟡 รอเปิดบริการ   ❌ ยังไม่มีในพื้นที่
+
+เจอหลายตึก → เลือกจากเมนูด้านล่างข้อความ
+ผลเป็นข้อมูลเบื้องต้น ยืนยันกับ AIS ก่อนนัดติดตั้งทุกครั้ง</pre>
+</section>
+
+<footer>
+  <p>รายชื่ออาคารประมาณ 13,600 แห่งทั่วประเทศ อัปเดตอัตโนมัติทุกวันเวลา 03:17 น.</p>
+  <p>ข้อมูลจาก MyChannel AIS · เป็นผลเบื้องต้นเพื่อคัดกรอง ควรยืนยันกับ AIS ก่อนนัดติดตั้ง</p>
+</footer>
+
+</main>
+</div>
+</div>
+</body>
+</html>
